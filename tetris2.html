@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<canvas id=canvas style="border: 1px solid black" width=200 height=400></canvas>
+<script>
+print = console.log
+
+var canvas = document.getElementById('canvas')
+var cx = canvas.getContext('2d')
+
+function clear() {
+	cx.clearRect(0, 0, canvas.width, canvas.height)
+}
+
+function dot(x, y, color) {
+	cx.fillStyle = color
+	cx.fillRect(x * 20 + 1, y * 20 + 1, 20 - 2, 20 - 2)
+}
+
+var pieces = [
+	[
+		'xxxx'
+	],
+	[
+		' x ',
+		'xxx'
+	],
+	[
+		'xx ',
+		' xx',
+	],
+	[
+		'xx',
+		'xx',
+	]
+]
+
+
+function convert_pieces() {
+	for (var p of pieces) {
+		for (var y = 0; y < p.length; y++) {
+			var s = p[y]; p[y] = []
+			for (var x = 0; x < s.length; x++)
+				p[y][x] = s[x] == 'x' ? 1 : 0
+		}
+	}
+}
+convert_pieces()
+
+function piece_w(p) {
+	var w = 0
+	for (var line of p)
+		w = Math.max(w, line.length)
+	return w
+}
+
+function rotate(p, repeat) {
+	var q = []
+	for (var y = 0; y < p.length; y++)
+		for (var x = 0; x < p[y].length; x++) {
+			q[x] = q[x] || []
+			q[x][y] = p[y][x]
+		}
+	return repeat ? rotate(q, repeat - 1) : q
+}
+
+function flip_horizontally(p) {
+	var q = []
+	for (var line of p)
+		q.push(line.reverse())
+	return q
+}
+
+function flip_vertically(p) {
+	return p.slice().reverse()
+}
+
+function draw(p, px, py, color) {
+	for (var y = 0; y < p.length; y++)
+		for (var x = 0; x < p[y].length; x++)
+			if (p[y][x])
+				dot(px + x, py + y, color || p[y][x])
+}
+
+var board_w = 10
+var board_h = 20
+var board
+
+function create_board() {
+	board = []
+	for (var y = 0; y < board_h; y++) {
+		board[y] = []
+		for (var x = 0; x < board_w; x++)
+			board[y][x] = 0
+	}
+}
+
+function in_board(p, px, py) {
+	return px >= 0 && py >= 0 && px + piece_w(p) <= board_w && py + p.length <= board_h
+}
+
+function collides(p, px, py) {
+	for (var y = 0; y < p.length; y++)
+		for (var x = 0; x < p[y].length; x++)
+			if (p[y][x] && board[py + y][px + x])
+				return true
+}
+
+function can_move(p, px, py) {
+	return in_board(p, px, py) && !collides(p, px, py)
+}
+
+function drop(p, px, py, color) {
+	for (var y = 0; y < p.length; y++)
+		for (var x = 0; x < p[y].length; x++)
+			if (p[y][x])
+				board[py + y][px + x] = color
+}
+
+var p, px, py, pcolor
+var running
+var down_fast
+
+function draw_game() {
+	clear()
+	draw(board, 0, 0)
+	if (p)
+		draw(p, px, py, pcolor)
+	if (!running) {
+		// TODO
+	}
+}
+
+var pcolors = ['#96ceb4', '#ffeead', '#ff6f69', '#ffcc5c', '#88d8b0']
+
+function new_piece() {
+	p = pieces[Math.floor(Math.random() * pieces.length)]
+	px = Math.floor(board_w / 2 + 0.5)
+	py = 0
+	pcolor = pcolors[Math.floor(Math.random() * pcolors.length)]
+}
+
+function compact() {
+	for (var y = board.length-1; y >= 0; y--) {
+		var line = board[y]
+		var hole
+		for (var c of line)
+			if (!c) {
+				hole = true
+				break
+			}
+		if (!hole) {
+			board.splice(y)
+			var line = []
+			for (var x = 0; x < board_w; x++)
+				line[x] = 0
+			board.splice(0, 0, line)
+		}
+	}
+}
+
+function advance() {
+	if (!running) return
+	if (!p) {
+		new_piece()
+		if (!can_move(p, px, py))
+			running = false
+	} else if (can_move(p, px, py + 1)) {
+		py++
+	} else {
+		drop(p, px, py, pcolor)
+		compact()
+		p = null
+	}
+	draw_game()
+}
+
+function advance_fast() {
+	if (down_fast)
+		advance()
+}
+
+document.onkeydown = function(e) {
+	if (e.key == 'ArrowRight' || e.key == 'ArrowLeft') {
+		var dx = e.key == 'ArrowRight' ? 1 : -1
+		if (can_move(p, px + dx, py)) {
+			px += dx
+			draw_game()
+		}
+	} else if (e.key == 'ArrowDown' || e.key == 'ArrowUp') {
+		var p1 = rotate(p, e.key == 'ArrowDown' ? 2 : 0)
+		if (can_move(p1, px, py)) {
+			p = p1
+			draw_game()
+		}
+	} else if (e.key == ' ') {
+		down_fast = true
+		draw_game()
+	}
+}
+
+document.onkeyup = function(e) {
+	if (e.key == ' ') {
+		down_fast = false
+		draw_game()
+	}
+}
+
+create_board()
+running = true
+setInterval(advance, 1000)
+setInterval(advance_fast, 50)
+
+</script>
