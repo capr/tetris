@@ -1,21 +1,22 @@
 <!DOCTYPE html>
-<canvas id=canvas style="border: 1px solid black" width=200 height=400></canvas>
+<div style="font: bold 12px sans-serif">Score: <span id=score></span></div>
+<canvas id=canvas style="border: 1px solid #393" width=200 height=400></canvas>
 <script>
 print = console.log
 
-var canvas = document.getElementById('canvas')
-var cx = canvas.getContext('2d')
+let canvas = document.getElementById('canvas')
+let cx = canvas.getContext('2d')
 
-function clear() {
+function clear_canvas() {
 	cx.clearRect(0, 0, canvas.width, canvas.height)
 }
 
-function dot(x, y, color) {
+function draw_dot(x, y, color) {
 	cx.fillStyle = color
 	cx.fillRect(x * 20 + 1, y * 20 + 1, 20 - 2, 20 - 2)
 }
 
-var pieces = [
+let pieces = [
 	[
 		'xxxx'
 	],
@@ -28,6 +29,18 @@ var pieces = [
 		' xx',
 	],
 	[
+		' xx',
+		'xx',
+	],
+	[
+		'xxx',
+		'x',
+	],
+	[
+		'xxx',
+		'  x',
+	],
+	[
 		'xx',
 		'xx',
 	]
@@ -35,10 +48,11 @@ var pieces = [
 
 
 function convert_pieces() {
-	for (var p of pieces) {
-		for (var y = 0; y < p.length; y++) {
-			var s = p[y]; p[y] = []
-			for (var x = 0; x < s.length; x++)
+	for (let i = 0; i < pieces.length; i++) {
+		let p = pieces[i]
+		for (let y = 0; y < p.length; y++) {
+			let s = p[y]; p[y] = []
+			for (let x = 0; x < s.length; x++)
 				p[y][x] = s[x] == 'x' ? 1 : 0
 		}
 	}
@@ -46,49 +60,38 @@ function convert_pieces() {
 convert_pieces()
 
 function piece_w(p) {
-	var w = 0
-	for (var line of p)
-		w = Math.max(w, line.length)
+	let w = 0
+	for (let i = 0; i < p.length; i++)
+		w = Math.max(w, p[i].length)
 	return w
 }
 
-function rotate(p, repeat) {
-	var q = []
-	for (var y = 0; y < p.length; y++)
-		for (var x = 0; x < p[y].length; x++) {
+function rotate(p) {
+	let q = []
+	for (let y = 0; y < p.length; y++)
+		for (let x = 0; x < p[y].length; x++) {
 			q[x] = q[x] || []
-			q[x][y] = p[y][x]
+			q[x][p.length - y - 1] = p[y][x]
 		}
-	return repeat ? rotate(q, repeat - 1) : q
-}
-
-function flip_horizontally(p) {
-	var q = []
-	for (var line of p)
-		q.push(line.reverse())
 	return q
 }
 
-function flip_vertically(p) {
-	return p.slice().reverse()
-}
-
-function draw(p, px, py, color) {
-	for (var y = 0; y < p.length; y++)
-		for (var x = 0; x < p[y].length; x++)
+function draw_dots(p, px, py, color) {
+	for (let y = 0; y < p.length; y++)
+		for (let x = 0; x < p[y].length; x++)
 			if (p[y][x])
-				dot(px + x, py + y, color || p[y][x])
+				draw_dot(px + x, py + y, color || p[y][x])
 }
 
-var board_w = 10
-var board_h = 20
-var board
+let board_w = 10
+let board_h = 20
+let board
 
 function create_board() {
 	board = []
-	for (var y = 0; y < board_h; y++) {
+	for (let y = 0; y < board_h; y++) {
 		board[y] = []
-		for (var x = 0; x < board_w; x++)
+		for (let x = 0; x < board_w; x++)
 			board[y][x] = 0
 	}
 }
@@ -98,8 +101,8 @@ function in_board(p, px, py) {
 }
 
 function collides(p, px, py) {
-	for (var y = 0; y < p.length; y++)
-		for (var x = 0; x < p[y].length; x++)
+	for (let y = 0; y < p.length; y++)
+		for (let x = 0; x < p[y].length; x++)
 			if (p[y][x] && board[py + y][px + x])
 				return true
 }
@@ -108,67 +111,83 @@ function can_move(p, px, py) {
 	return in_board(p, px, py) && !collides(p, px, py)
 }
 
-function drop(p, px, py, color) {
-	for (var y = 0; y < p.length; y++)
-		for (var x = 0; x < p[y].length; x++)
+function settle_piece(p, px, py, color) {
+	for (let y = 0; y < p.length; y++)
+		for (let x = 0; x < p[y].length; x++)
 			if (p[y][x])
 				board[py + y][px + x] = color
 }
 
-var p, px, py, pcolor
-var running
-var down_fast
+let p, px, py, pcolor
+let running
+let score
+let down_fast
+
+function draw_score() {
+	document.getElementById('score').innerHTML = score
+}
 
 function draw_game() {
-	clear()
-	draw(board, 0, 0)
-	if (p)
-		draw(p, px, py, pcolor)
+	clear_canvas()
+	draw_dots(board, 0, 0)
+	draw_dots(p, px, py, pcolor)
+	draw_score()
 	if (!running) {
 		// TODO
 	}
 }
 
-var pcolors = ['#96ceb4', '#ffeead', '#ff6f69', '#ffcc5c', '#88d8b0']
+let pcolors = ['#96ceb4', '#ffeead', '#ff6f69', '#ffcc5c', '#88d8b0']
 
-function new_piece() {
-	p = pieces[Math.floor(Math.random() * pieces.length)]
-	px = Math.floor(board_w / 2 + 0.5)
-	py = 0
-	pcolor = pcolors[Math.floor(Math.random() * pcolors.length)]
+function random(n) {
+	return Math.floor(Math.random() * n)
 }
 
-function compact() {
-	for (var y = board.length-1; y >= 0; y--) {
-		var line = board[y]
-		var hole
-		for (var c of line)
-			if (!c) {
-				hole = true
-				break
-			}
-		if (!hole) {
-			board.splice(y)
-			var line = []
-			for (var x = 0; x < board_w; x++)
-				line[x] = 0
-			board.splice(0, 0, line)
+function new_piece() {
+	p = pieces[random(pieces.length)]
+	for (let i = 0; i < random(3); i++)
+		p = rotate(p)
+	px = Math.floor((board_w - piece_w(p)) / 2 + 0.5)
+	py = 0
+	pcolor = pcolors[Math.floor(Math.random() * pcolors.length)]
+	running = can_move(p, px, py)
+}
+
+function has_hole(line) {
+	for (let x = 0; x < line.length; x++)
+		if (!line[x])
+			return true
+}
+
+function create_empty_line() {
+	let line = []
+	for (let x = 0; x < board_w; x++)
+		line[x] = 0
+	return line
+}
+
+let scores = [0, 40, 100, 300, 1200]
+
+function compact_wall() {
+	let n = 0
+	for (let y = board.length-1; y >= 0; y--)
+		while (!has_hole(board[y])) {
+			board.splice(y, 1)
+			board.unshift(create_empty_line())
+			n++
 		}
-	}
+	score += scores[n]
 }
 
 function advance() {
-	if (!running) return
-	if (!p) {
-		new_piece()
-		if (!can_move(p, px, py))
-			running = false
-	} else if (can_move(p, px, py + 1)) {
+	if (!running)
+		return
+	if (can_move(p, px, py + 1))
 		py++
-	} else {
-		drop(p, px, py, pcolor)
-		compact()
-		p = null
+	else {
+		settle_piece(p, px, py, pcolor)
+		compact_wall()
+		new_piece()
 	}
 	draw_game()
 }
@@ -179,34 +198,44 @@ function advance_fast() {
 }
 
 document.onkeydown = function(e) {
+	if (!running)
+		return
 	if (e.key == 'ArrowRight' || e.key == 'ArrowLeft') {
-		var dx = e.key == 'ArrowRight' ? 1 : -1
+		let dx = e.key == 'ArrowRight' ? 1 : -1
 		if (can_move(p, px + dx, py)) {
 			px += dx
 			draw_game()
 		}
-	} else if (e.key == 'ArrowDown' || e.key == 'ArrowUp') {
-		var p1 = rotate(p, e.key == 'ArrowDown' ? 2 : 0)
+	} else if (e.key == 'ArrowUp') {
+		let p1 = rotate(p)
 		if (can_move(p1, px, py)) {
 			p = p1
 			draw_game()
 		}
-	} else if (e.key == ' ') {
+	} else if (e.key == 'ArrowDown') {
 		down_fast = true
 		draw_game()
 	}
 }
 
 document.onkeyup = function(e) {
-	if (e.key == ' ') {
+	if (e.key == 'ArrowDown') {
 		down_fast = false
 		draw_game()
 	}
 }
 
-create_board()
-running = true
 setInterval(advance, 1000)
 setInterval(advance_fast, 50)
+
+function new_game() {
+	create_board()
+	new_piece()
+	running = true
+	score = 0
+	draw_game()
+}
+
+new_game()
 
 </script>
