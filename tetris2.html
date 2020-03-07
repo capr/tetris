@@ -12,12 +12,16 @@ function clear_canvas() {
 }
 
 function draw_dot(x, y, color) {
+	cx.shadowColor = 'black'
+	cx.shadowBlur = 1
+	cx.shadowOffsetX = 1
+	cx.shadowOffsetY = 1
 	cx.fillStyle = color
 	cx.fillRect(x * 20 + 1, y * 20 + 1, 20 - 2, 20 - 2)
 }
 
 function draw_board(w, h) {
-	cx.strokeStyle = '#999'
+	cx.shadowColor = 'transparent'
 	cx.beginPath()
 	cx.rect(0, 0, w * 20, h * 20)
 	cx.stroke()
