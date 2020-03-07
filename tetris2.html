@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <div style="font: bold 12px sans-serif">Score: <span id=score></span></div>
-<canvas id=canvas style="border: 1px solid #393" width=200 height=400></canvas>
+<canvas id=canvas width=400 height=400></canvas>
 <script>
 print = console.log
 
@@ -16,34 +16,40 @@ function draw_dot(x, y, color) {
 	cx.fillRect(x * 20 + 1, y * 20 + 1, 20 - 2, 20 - 2)
 }
 
+function draw_board(w, h) {
+	cx.strokeStyle = '#999'
+	cx.beginPath()
+	cx.rect(0, 0, w * 20, h * 20)
+	cx.stroke()
+}
+
 let pieces = [
 	[
-		'xxxx'
-	],
-	[
+		'x',
+		'x',
+		'x',
+		'x',
+	], [
+		'xxxx',
+	], [
 		' x ',
 		'xxx'
-	],
-	[
+	], [
 		'xx ',
 		' xx',
-	],
-	[
+	], [
 		' xx',
-		'xx',
-	],
-	[
+		'xx ',
+	], [
 		'xxx',
-		'x',
-	],
-	[
+		'x  ',
+	], [
 		'xxx',
 		'  x',
+	], [
+		'xx',
+		'xx',
 	],
-	[
-		'xx',
-		'xx',
-	]
 ]
 
 
@@ -68,6 +74,7 @@ function piece_w(p) {
 
 function rotate(p) {
 	let q = []
+	q.color = p.color
 	for (let y = 0; y < p.length; y++)
 		for (let x = 0; x < p[y].length; x++) {
 			q[x] = q[x] || []
@@ -76,11 +83,11 @@ function rotate(p) {
 	return q
 }
 
-function draw_dots(p, px, py, color) {
+function draw_dots(p, px, py) {
 	for (let y = 0; y < p.length; y++)
 		for (let x = 0; x < p[y].length; x++)
 			if (p[y][x])
-				draw_dot(px + x, py + y, color || p[y][x])
+				draw_dot(px + x, py + y, p.color || p[y][x])
 }
 
 let board_w = 10
@@ -111,30 +118,30 @@ function can_move(p, px, py) {
 	return in_board(p, px, py) && !collides(p, px, py)
 }
 
-function settle_piece(p, px, py, color) {
+function settle_piece(p, px, py) {
 	for (let y = 0; y < p.length; y++)
 		for (let x = 0; x < p[y].length; x++)
 			if (p[y][x])
-				board[py + y][px + x] = color
+				board[py + y][px + x] = p.color
 }
 
-let p, px, py, pcolor
-let running
+let p, p1, px, py
+let running, paused
 let score
 let down_fast
 
 function draw_score() {
 	document.getElementById('score').innerHTML = score
+		+ ' &nbsp;&nbsp;' + (paused ? 'PAUSED' : (running ? '' : 'GAME OVER'))
 }
 
 function draw_game() {
 	clear_canvas()
+	draw_board(board_w, board_h)
 	draw_dots(board, 0, 0)
-	draw_dots(p, px, py, pcolor)
+	draw_dots(p, px, py)
+	draw_dots(p1, 11, 0)
 	draw_score()
-	if (!running) {
-		// TODO
-	}
 }
 
 let pcolors = ['#96ceb4', '#ffeead', '#ff6f69', '#ffcc5c', '#88d8b0']
@@ -144,12 +151,18 @@ function random(n) {
 }
 
 function new_piece() {
-	p = pieces[random(pieces.length)]
-	for (let i = 0; i < random(3); i++)
+	let p = pieces[random(pieces.length)].slice()
+	for (let i = random(3); i; i--)
 		p = rotate(p)
+	p.color = pcolors[random(pcolors.length)]
+	return p
+}
+
+function next_piece() {
+	p = p1
+	p1 = new_piece()
 	px = Math.floor((board_w - piece_w(p)) / 2 + 0.5)
 	py = 0
-	pcolor = pcolors[Math.floor(Math.random() * pcolors.length)]
 	running = can_move(p, px, py)
 }
 
@@ -185,9 +198,9 @@ function advance() {
 	if (can_move(p, px, py + 1))
 		py++
 	else {
-		settle_piece(p, px, py, pcolor)
+		settle_piece(p, px, py)
 		compact_wall()
-		new_piece()
+		next_piece()
 	}
 	draw_game()
 }
@@ -198,6 +211,14 @@ function advance_fast() {
 }
 
 document.onkeydown = function(e) {
+	if (!(running || paused))
+		return
+	if (e.key == 'p') {
+		paused = !paused
+		running = !paused
+		draw_score()
+		return
+	}
 	if (!running)
 		return
 	if (e.key == 'ArrowRight' || e.key == 'ArrowLeft') {
@@ -230,7 +251,8 @@ setInterval(advance_fast, 50)
 
 function new_game() {
 	create_board()
-	new_piece()
+	p1 = new_piece()
+	next_piece()
 	running = true
 	score = 0
 	draw_game()
